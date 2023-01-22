@@ -66,20 +66,20 @@ services:
     #   - "traefik.enable=true"
     #   - "traefik.docker.network=traefik"
     depends_on:
-      - dnscrypt-proxy
+      dnscrypt-proxy:
+        condition: service_healthy
 
   dnscrypt-proxy:
     image: issenn/dnscrypt-proxy:latest
     container_name: dnscrypt-proxy
     restart: unless-stopped
+    command: -config /etc/dnscrypt-proxy/dnscrypt-proxy.toml
     # expose:
     #   - "5053"
     #   - "5053/udp"
     ports:
       - "127.0.0.1:5053:5053/tcp"
       - "127.0.0.1:5053:5053/udp"
-      # - "127.0.0.1:53:5053/tcp"
-      # - "127.0.0.1:53:5053/udp"
       # - "53:5053/tcp"
       # - "53:5053/udp"
     hostname: dnscrypt-proxy
@@ -91,6 +91,12 @@ services:
     # network_mode: "bridge"
     # networks:
     #   - "traefik"
+    healthcheck:
+      test: ["CMD", "dnscrypt-proxy", "-config", "/etc/dnscrypt-proxy/dnscrypt-proxy.toml", "-resolve", "captive.apple.com"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     security_opt:
       - no-new-privileges:true
       - label:disable
