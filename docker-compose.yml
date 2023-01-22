@@ -1,0 +1,176 @@
+---
+
+version: '3.9'
+
+name: coredns
+
+services:
+  coredns:
+    image: issenn/coredns:latest
+    container_name: coredns
+    restart: unless-stopped
+    command: -conf /etc/coredns/Corefile
+    # expose:
+    #   - "53"
+    #   - "53/udp"
+    ports:
+      - "127.0.0.1:53:53"
+      - "127.0.0.1:53:53/udp"
+      # - "53:53/tcp"
+      # - "53:53/udp"
+    hostname: coredns
+    # dns_search:
+    #   - docker.localhost
+    # domainname: docker.localhost
+    # network_mode: "bridge"
+    # networks:
+    #   - "traefik"
+    security_opt:
+      - no-new-privileges:true
+      - label:disable
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    read_only: true
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 50M
+        reservations:
+          cpus: '0.25'
+          memory: 6M
+    environment:
+      TZ: "Asia/Shanghai"
+      DEFAULT_TZ: "Asia/Shanghai"
+      HTTP_PROXY: "${HTTP_PROXY}"
+      HTTPS_PROXY: "${HTTPS_PROXY}"
+    volumes:
+      - type: bind
+        source: "/usr/share/zoneinfo/Asia/Shanghai"
+        target: "/usr/share/zoneinfo/Asia/Shanghai"
+        read_only: true
+      - type: bind
+        source: "./config/coredns/Corefile"
+        target: "/etc/coredns/Corefile"
+        read_only: true
+      - type: bind
+        source: "./config/coredns/rules"
+        target: "/etc/coredns/rules"
+        read_only: true
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.docker.network=traefik"
+    depends_on:
+      - dnscrypt-proxy
+
+  dnscrypt-proxy:
+    image: issenn/dnscrypt-proxy:latest
+    container_name: dnscrypt-proxy
+    restart: unless-stopped
+    # expose:
+    #   - "5053"
+    #   - "5053/udp"
+    ports:
+      - "127.0.0.1:5053:5053/tcp"
+      - "127.0.0.1:5053:5053/udp"
+      # - "127.0.0.1:53:5053/tcp"
+      # - "127.0.0.1:53:5053/udp"
+      # - "53:5053/tcp"
+      # - "53:5053/udp"
+    hostname: dnscrypt-proxy
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
+    # dns_search:
+    #   - docker.localhost
+    # domainname: docker.localhost
+    # network_mode: "bridge"
+    # networks:
+    #   - "traefik"
+    security_opt:
+      - no-new-privileges:true
+      - label:disable
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 100M
+        reservations:
+          cpus: '0.25'
+          memory: 6M
+    environment:
+      TZ: "Asia/Shanghai"
+      DEFAULT_TZ: "Asia/Shanghai"
+      HTTP_PROXY: "${HTTP_PROXY}"
+      HTTPS_PROXY: "${HTTPS_PROXY}"
+    volumes:
+      - type: bind
+        source: "/usr/share/zoneinfo/Asia/Shanghai"
+        target: "/usr/share/zoneinfo/Asia/Shanghai"
+        read_only: true
+      - type: bind
+        source: "./config/dnscrypt-proxy"
+        target: "/etc/dnscrypt-proxy"
+      - type: bind
+        source: "./log/dnscrypt-proxy"
+        target: "/var/log/dnscrypt-proxy"
+
+  # More info at https://github.com/pi-hole/docker-pi-hole/ and https://docs.pi-hole.net/
+  # pihole:
+    # image: pihole/pihole:2022.12.1
+    # container_name: pihole
+    # hostname: pihole
+    # restart: unless-stopped
+    # security_opt:
+    #   - no-new-privileges:true
+    # # expose:
+    # #   - "53"
+    # #   - "53/udp"
+    # # For DHCP it is recommended to remove these ports and instead add: network_mode: "host"
+    # # ports:
+    # #   - "127.0.0.1:53:53/tcp"
+    # #   - "127.0.0.1:53:53/udp"
+    # #   # - "67:67/udp"  # Only required if you are using Pi-hole as your DHCP server
+    # #   - "80:80/tcp"
+    # #   - "443:443/tcp"
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '0.50'
+    #       memory: 100M
+    #     reservations:
+    #       cpus: '0.25'
+    #       memory: 6M
+    # environment:
+    #   TZ: "Asia/Shanghai"
+    #   WEBPASSWORD: "issenn"
+    #   DNSMASQ_LISTENING: "all"
+    #   # WEBPASSWORD: 'set a secure password here or it will be random'
+    # # Volumes store your data between container upgrades
+    # volumes:
+    #   - type: bind
+    #     source: "./config/pihole"
+    #     target: "/etc/pihole"
+    #   - type: bind
+    #     source: "./config/dnsmasq.d"
+    #     target: "/etc/dnsmasq.d"
+    # # Change this DNS to the gateway of your machine/pi
+    # # dns:
+    # #   - 127.0.0.1
+    # #   - 1.1.1.1
+    # # dns_search:
+    # #   - docker.localhost
+    # # domainname: docker.localhost
+    # # Recommended but not required (DHCP needs NET_ADMIN)
+    # #   https://github.com/pi-hole/docker-pi-hole#note-on-capabilities
+    # # cap_add:
+    # #   - NET_ADMIN # Required if you are using Pi-hole as your DHCP server, else not needed
+    # # links:
+    # #   - "coredns"
